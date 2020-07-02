@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Arrays;
 import java.util.Properties;
 
 import javax.servlet.http.HttpServletRequest;
@@ -17,6 +18,10 @@ import org.aopalliance.intercept.MethodInvocation;
 import org.pac4j.core.profile.CommonProfile;
 import org.pac4j.jwt.config.signature.SecretSignatureConfiguration;
 import org.pac4j.jwt.credentials.authenticator.JwtAuthenticator;
+
+import com.strandls.authentication_utility.constants.Roles;
+
+import net.minidev.json.JSONArray;
 
 public class UserValidationFilter implements MethodInterceptor {
 	
@@ -59,6 +64,15 @@ public class UserValidationFilter implements MethodInterceptor {
 		CommonProfile profile = jwtAuthenticator.validateToken(token);
 		if (profile == null) {
 			return Response.status(Status.UNAUTHORIZED).entity("Invalid JWT token").build();
+		}
+		JSONArray roles = (JSONArray) profile.getAttribute("roles");
+		ValidateUser vu = method.getAnnotation(ValidateUser.class);
+		int annotatedRolesLength = vu.roles().length;
+		if (annotatedRolesLength > 0) {
+			boolean rolesPresent = Arrays.stream(vu.roles()).anyMatch(role -> roles.contains(role.toString()));
+			if (!rolesPresent) {
+				return Response.status(Status.UNAUTHORIZED).entity("Unauthorized End-Point").build();
+			}
 		}
 		return invocation.proceed();
 	}
